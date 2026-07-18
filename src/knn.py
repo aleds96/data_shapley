@@ -2,16 +2,13 @@ from collections import Counter
 from typing import Tuple, Union
 
 import numpy as np
-
+from .utils import precompute_distances
 
 class Classifier:
 
-    def __init__(self, n_neighbors: int = 3, distance_type: str = "euclid"):
+    def __init__(self, n_neighbors: int = 3):
         if n_neighbors < 1:
             raise ValueError(f"n_neighbors dev esser >= 1, ricevuto {n_neighbors}")
-        if distance_type not in ["euclid", "manhattan"]:
-            raise ValueError(f"tipo distanza deve ess 'euclid' o 'manhatan', ricevuto {distance_type}")
-
         self.n_neighbors = n_neighbors
         self.distance_type = distance_type
         self.data_x: np.ndarray | None = None
@@ -50,11 +47,7 @@ class Classifier:
 
 
     def _pairwise_distances(self, X: np.ndarray) -> np.ndarray:
-        if self.distance_type == "euclid":
-            diff = X[:, None, :] - self.data_x[None, :, :]
-            return np.sqrt(np.sum(diff * diff, axis=2))
-        diff = np.abs(X[:, None, :] - self.data_x[None, :, :])
-        return np.sum(diff, axis=2)
+        return precompute_distances(X)
     
     def _check_fitted(self) -> None:
         if not self._fitted or self.data_x is None or self.data_y is None:
