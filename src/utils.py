@@ -173,31 +173,6 @@ def plot_shapley_distribution(values: np.ndarray, title: str, save_path=None) ->
         fig.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.show()
 
-
-def plot_removal_curves(results: Dict[str, List[float]], title: str, save_path=None) -> None:
-    fractions = results["fraction"]
-    plt.figure(figsize=(10, 6))
-    plt.axhline(results["acc_baseline"][0], color="gray", linestyle=":",
-                label=f'Baseline: {results["acc_baseline"][0]:.3f}', alpha=0.8)
-    plt.plot(fractions, results["acc_remove_lowest"], "g-o",
-             label="Remove lowest Shapley", linewidth=2, markersize=7)
-    plt.plot(fractions, results["acc_remove_highest"], "r-s",
-             label="Remove highest Shapley", linewidth=2, markersize=7)
-    rand_mean = np.array(results["acc_remove_random_mean"])
-    rand_std = np.array(results["acc_remove_random_std"])
-    plt.plot(fractions, rand_mean, "b-^", label="Remove random (mean)",
-             linewidth=2, markersize=7)
-    plt.fill_between(fractions, rand_mean - rand_std, rand_mean + rand_std,
-                     color="blue", alpha=0.2, label="Random ± std")
-    plt.xlabel("Fraction of training data removed")
-    plt.ylabel("Test accuracy")
-    plt.title(title)
-    plt.legend(loc="best")
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.show()
 def plot_noise_comparison_curves(
     by_noise: Dict[str, Dict], ds_name: str, save_path=None, levels: List[str] = []
 ) -> None:
@@ -219,33 +194,8 @@ def plot_noise_comparison_curves(
     fig.suptitle(f"Removal curves per livello di rumore — {ds_name}", y=1.03)
     plt.tight_layout()
     if save_path:
-        fig.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.show()
-#Barre: frazione di punti rumorosi finiti nel 20% con Shapley più basso."""
-def plot_noise_detection_bar(
-    all_results: Dict[str, Dict[str, Dict]], save_path=None, 
-    levels :List[str] = []
-) -> None:
-    datasets = list(all_results.keys())
-    #levels = [l for l in NOISE_LEVELS if l != "none"]
-    width = 0.8 / len(levels)
-    x = np.arange(len(datasets))
-    plt.figure(figsize=(11, 6))
-    for j, level in enumerate(levels):
-        vals = []
-        for d in datasets:
-            det = all_results[d][level]["detection"]
-            vals.append(det["n_noise_in_bottom20"] / det["n_noise"] if det else 0)
-        plt.bar(x + j * width, vals, width, label=level)
-    plt.xticks(x + width * (len(levels) - 1) / 2, datasets)
-    plt.ylabel("Frazione di rumorosi nel 20% più basso")
-    plt.ylim(0, 1)
-    plt.title("Capacità del Data Shapley di identificare label rumorose")
-    plt.legend(title="Noise")
-    plt.grid(True, axis="y", alpha=0.3)
-    plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        OUT_PATH = save_path / f'noise_comparison_curves_{ds_name}.png'
+        plt.savefig(OUT_PATH, dpi=150, bbox_inches="tight")
     plt.show()
 
 #Disegna un unico quantile plot con più curve, una per ciascun livello di rumore.
@@ -272,7 +222,8 @@ def plot_shapley_quantiles_by_noise(
     plt.tight_layout()
     
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        OUT_PATH = save_path / f'shapley_quantiles_by_noise_{ds_name}.png'
+        plt.savefig(OUT_PATH, dpi=150, bbox_inches="tight")
     plt.show()
 def compute_quantile_curve(values: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     vals = np.asarray(values)
@@ -334,7 +285,8 @@ def plot_quantile_shapley_clean_vs_noisy_by_noise(
     fig.suptitle(f"Shapley quantiles: clean vs noisy — {ds_name}", y=1.02)
     plt.tight_layout()
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        OUT_PATH = save_path / f'quantile_clean_vs_noisy_{ds_name}.png'
+        plt.savefig(OUT_PATH, dpi=150, bbox_inches="tight")
 def normalize_minmax(values,feature_range: Tuple[float,float] = (0.0, 1.0)) -> np.ndarray:
     vals = np.asarray(values, dtype=float)
     if vals.size == 0:
