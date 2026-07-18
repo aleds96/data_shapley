@@ -2,7 +2,6 @@ from collections import Counter
 from typing import Tuple, Union
 
 import numpy as np
-from .utils import precompute_distances
 
 class Classifier:
 
