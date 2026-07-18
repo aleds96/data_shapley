@@ -8,6 +8,10 @@ from .knn import Classifier
 
 def set_seed(seed: int = 42) -> None:
     np.random.seed(seed)
+def precompute_distances(X):
+    X = np.asarray(X, float)
+    diff = X[:, None, :] - X[None, :, :]
+    return np.sqrt(np.sum(diff * diff, axis=2))
 
 def _acc_at_fraction(removal: Dict, key: str, frac: float) -> float:
     fr = removal["fraction"]
