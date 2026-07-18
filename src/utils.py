@@ -191,7 +191,7 @@ def plot_noise_comparison_curves(
         ax.grid(True, alpha=0.3)
     axes[0].set_ylabel("Test accuracy")
     axes[0].legend(loc="best")
-    fig.suptitle(f"Removal curves per livello di rumore — {ds_name}", y=1.03)
+    fig.suptitle(f"Removal curves by noise level — {ds_name}", y=1.03)
     plt.tight_layout()
     if save_path:
         OUT_PATH = save_path / f'noise_comparison_curves_{ds_name}.png'
