@@ -1,5 +1,5 @@
 
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict,Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -274,3 +274,76 @@ def plot_shapley_quantiles_by_noise(
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.show()
+def compute_quantile_curve(values: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    vals = np.asarray(values)
+    if vals.size == 0:
+        return np.array([]), np.array([])
+    s = np.sort(vals)
+    q = np.linspace(0.0, 1.0, len(s))
+    return q, s
+
+def plot_quantile_shapley_clean_vs_noisy_by_noise(
+    all_results: Dict[str, Dict[str, Dict]],
+    ds_name: str,
+    levels: List[str],
+    *,
+    figsize_per_panel: Tuple[int,int] = (4,4),
+    colors: Optional[Dict[str,str]] = None,
+    save_path: Optional[str] = None,
+) -> None:
+    if colors is None:
+        colors = {"clean":"tab:blue", "noisy":"tab:orange"}
+
+    n = len(levels)
+    fig_w = figsize_per_panel[0] * n
+    fig_h = figsize_per_panel[1]
+    fig, axes = plt.subplots(1, n, figsize=(fig_w, fig_h), squeeze=False)
+    axes = axes[0]
+
+    for ax, level in zip(axes, levels):
+        entry = all_results[ds_name].get(level, {})
+        shap = np.asarray(entry.get("shapley_values", np.array([])))
+        shap = normalize_minmax(shap, feature_range=(-1.0, 1.0))
+        noise_idx = np.asarray(entry.get("noise_idx", np.array([], dtype=int)))
+        n_total = len(shap)
+
+        noisy_mask = np.zeros(n_total, dtype=bool)
+        if noise_idx.size > 0:
+            valid = noise_idx[(noise_idx >= 0) & (noise_idx < n_total)]
+            noisy_mask[valid] = True
+        clean_mask = ~noisy_mask
+
+        clean_vals = shap[clean_mask]
+        noisy_vals = shap[noisy_mask] if noisy_mask.any() else np.array([])
+
+        q_c, s_c = compute_quantile_curve(clean_vals)
+        q_n, s_n = compute_quantile_curve(noisy_vals)
+
+        if s_c.size > 0:
+            ax.plot(q_c, s_c, color=colors["clean"], lw=2, label=f"clean (n={len(s_c)})")
+        if s_n.size > 0:
+            ax.plot(q_n, s_n, color=colors["noisy"], lw=2, linestyle="--", label=f"noisy (n={len(s_n)})")
+
+        ax.axhline(0.0, color="red", linestyle="--", alpha=0.6)
+        ax.set_title(level)
+        ax.set_xlabel("Quantile")
+        ax.set_xlim(0,1)
+        ax.grid(True, alpha=0.25)
+        ax.legend(fontsize=9)
+
+    fig.suptitle(f"Shapley quantiles: clean vs noisy — {ds_name}", y=1.02)
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+def normalize_minmax(values,feature_range: Tuple[float,float] = (0.0, 1.0)) -> np.ndarray:
+    vals = np.asarray(values, dtype=float)
+    if vals.size == 0:
+        return vals.copy()
+    vmin = np.nanmin(vals)
+    vmax = np.nanmax(vals)
+    lo, hi = feature_range
+    denom = vmax - vmin
+    if denom == 0 or np.isnan(denom):
+        return np.full_like(vals, fill_value=lo, dtype=float)
+    scaled = (vals - vmin) / denom
+    return lo + scaled * (hi - lo)

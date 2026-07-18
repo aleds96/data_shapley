@@ -1,0 +1,172 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\title{Data Shapley for Classification Tasks}
+\author{Student Name}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+Traditional evaluation of machine learning models focuses on the predictive performance of the final estimator, but it often hides the role of individual training points. The Data Shapley framework addresses this limitation by assigning a quantitative value to each training sample, measuring how much it contributes to the final prediction quality. In this project, the method is applied to classification tasks with the goal of ranking data points by usefulness, studying the effect of removing them, and testing whether the conclusions remain stable under more difficult conditions such as label noise and higher-dimensional inputs.
+
+\section{Why these datasets?}
+The project uses a mix of real and synthetic data to balance interpretability and control. The Iris dataset is a classical small-scale classification benchmark and is appropriate for a first implementation because its structure is simple and well known. It allows one to verify that the Shapley procedure produces sensible rankings on a real-world problem. The synthetic classification setting, instead, is useful because the data-generating process is known and the task can be modified in a controlled way. This makes it possible to introduce systematic perturbations, such as noisy labels or additional irrelevant features, and then analyze how these changes influence the estimated values. The combination of these two families of datasets is particularly suitable for a methodological project, since it provides both realism and reproducibility.
+
+\section{Methodology}
+The core classifier used in this study is a k-nearest-neighbor model, chosen because it is simple, non-parametric, and easy to interpret. The project follows a two-stage protocol that keeps the analysis conceptually clean and computationally manageable. First, the data are split into three parts using a custom train/validation/test split: the training set is used to define the coalition of points whose contribution is being evaluated, the validation set is used to select the classifier hyperparameter $k$, and the test set is kept untouched until the final evaluation stage. This avoids using the test set for model selection and keeps the conclusions unbiased.
+
+Once $k$ is fixed, the Data Shapley values are estimated through permutation sampling. For each random ordering of the training points, the classifier is evaluated on the validation set before and after adding the next point, and the gain in predictive accuracy is accumulated. Averaging over many permutations produces an estimate of the contribution of each sample. This is consistent with the idea that Data Shapley is defined with respect to a fixed learning algorithm: once the model is specified, the value of the training points is assessed relative to that model.
+
+Finally, points are removed according to two strategies: removing the lowest-value samples first and removing the highest-value samples first. The resulting accuracy curves are then evaluated on the test set. This makes it possible to compare the effect of removing low- and high-value points in a way that is both meaningful and free from leakage from the hyperparameter-selection step.
+
+\section{Methodological justification}
+A key design choice of this project is to separate model selection from the Shapley analysis. These two steps answer different questions and therefore require different procedures. The selection of the hyperparameter $k$ is a problem of model selection: one wants to estimate which value of $k$ is expected to generalize best. Because the datasets used in this study are small, a single train/validation split would be too noisy and would make the choice of $k$ unstable. For this reason, $k$ is selected through an internal K-fold cross-validation procedure on the training set, which uses the available data more efficiently and provides a more robust estimate of the expected predictive performance of each candidate value of $k$.
+
+Once $k$ is fixed, the Data Shapley analysis becomes a different problem. Shapley values are defined with respect to a fixed learning algorithm and a fixed payoff function. In this project, the payoff is the predictive accuracy measured on a reference validation set, which is used to evaluate the marginal contribution of each training point. To keep the game well defined, the validation and test splits are therefore kept fixed throughout the Shapley estimation. The validation set provides a stable payoff function $v(S)$ for each coalition $S$, while the test set remains completely separate and is used only for the final removal experiment. Changing the validation split during the Shapley computation would make the payoff inconsistent across coalitions, while using the test set for the payoff would introduce leakage and would bias the final evaluation.
+
+This choice is therefore both conceptually coherent and practically motivated: K-fold cross-validation is appropriate for estimating $k$, whereas a fixed validation/test split is appropriate for defining a stable and interpretable Shapley game.
+
+\section{Experimental protocol and evaluation}
+The evaluation is based on both descriptive and inferential tools. The first output is the distribution of Shapley values, which reveals whether the contribution of samples is concentrated in a small subset of points or spread more uniformly across the dataset. The second output is a quantile plot, which gives a compact view of the spread and tail behavior of the estimated values. The third output is the removal curve, where the test accuracy is measured as an increasing fraction of the training set is deleted. This allows one to inspect whether removing low-value points has a smaller impact than removing high-value points. The cross-validated choice of $k$ is reported for each experiment, and the final comparison uses the untouched test set. A note is important here: the test set is not used to choose $k$, because doing so would make the selection procedure dependent on the final evaluation data and would lead to overly optimistic estimates of generalization. In addition, a paired comparison between the two removal strategies is reported, together with a paired t-test, to provide a simple statistical check of the difference in performance.
+
+\section{Results}
+The results show a clear pattern across datasets. In the real-world Iris setting, the validation-based model selection chose $k=1$, and the estimated Shapley values identify a subset of points that contribute more strongly to predictive performance than the rest. In the synthetic baseline, the validation procedure selected $k=3$, and the removal curves confirm that deleting the samples with the lowest estimated values causes a smaller drop in accuracy than deleting the highest-value ones. In the noisy and higher-dimensional variants, the procedure selected $k=5$, which is consistent with the increased difficulty of the tasks. These results suggest that the Shapley procedure is not merely assigning random scores, but is identifying points that are actually more useful for generalization under a fixed and explicitly selected model.
+
+\subsection{Iris experiment}
+Figure~\ref{fig:iris_values} shows the distribution of Shapley values for Iris. The histogram highlights that the contribution of samples is not uniform: a small number of instances receive larger values, while many others lie close to the center of the distribution. This behavior is consistent with the idea that some observations are more informative than others. Figure~\ref{fig:iris_removal} reports the removal curve for the same dataset. The curve shows that removing the highest-value points causes a more severe degradation in accuracy than removing low-value points, which supports the ranking produced by the method.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/iris_shapley_values.png}
+\caption{Distribution of estimated Shapley values for the Iris dataset.}
+\label{fig:iris_values}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/iris_removal_curve.png}
+\caption{Accuracy curve obtained by removing low-value and high-value points from the Iris dataset.}
+\label{fig:iris_removal}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/iris_quantile_plot.png}
+\caption{Quantile plot of the Shapley values for Iris. The figure illustrates the spread and the tail of the estimated contributions.}
+\label{fig:iris_quantile}
+\end{figure}
+
+\subsection{Synthetic baseline}
+The synthetic dataset is useful because it allows the decision boundary to be controlled explicitly. Figure~\ref{fig:synthetic_values} shows the Shapley distribution for the baseline problem, while Figure~\ref{fig:synthetic_removal} compares the effect of removing low- and high-value points. The difference between the two curves is again visible and confirms that the ranking is informative. Figure~\ref{fig:synthetic_quantile} provides the quantile view of the same distribution, highlighting the presence of a small number of highly influential points.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_shapley_values.png}
+\caption{Distribution of Shapley values for the synthetic classification task.}
+\label{fig:synthetic_values}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_removal_curve.png}
+\caption{Removal curve for the synthetic dataset. Removing high-value points causes a stronger loss in accuracy.}
+\label{fig:synthetic_removal}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_quantile_plot.png}
+\caption{Quantile plot of the synthetic Shapley values.}
+\label{fig:synthetic_quantile}
+\end{figure}
+
+\subsection{Label noise and dimensionality extensions}
+The extensions strengthen this conclusion. When label noise is injected, the differences between low-value and high-value removals become more pronounced, indicating that the estimated contributions become more sensitive to unstable or harmful samples. In the higher-dimensional synthetic settings, the method still produces structured rankings, although the effect of removing points becomes more variable as the problem becomes less simple. Figures~\ref{fig:synthetic_noise_values}--\ref{fig:synthetic_dim16_quantile} illustrate this behavior. The noise variant shows a wider spread and a stronger separation between the two removal strategies, while the high-dimensional variants confirm that the method can still produce meaningful rankings even when the input space is larger and the decision problem is more complex.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_noise_shapley_values.png}
+\caption{Distribution of Shapley values under label noise.}
+\label{fig:synthetic_noise_values}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_noise_removal_curve.png}
+\caption{Removal curve for the noisy synthetic dataset.}
+\label{fig:synthetic_noise_removal}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_noise_quantile_plot.png}
+\caption{Quantile plot for the noisy synthetic experiment.}
+\label{fig:synthetic_noise_quantile}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_dim_8_shapley_values.png}
+\caption{Shapley distribution for the synthetic dataset with 8 input features.}
+\label{fig:synthetic_dim8_values}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_dim_8_removal_curve.png}
+\caption{Removal curve for the 8-dimensional synthetic dataset.}
+\label{fig:synthetic_dim8_removal}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_dim_8_quantile_plot.png}
+\caption{Quantile plot for the 8-dimensional synthetic experiment.}
+\label{fig:synthetic_dim8_quantile}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_dim_16_shapley_values.png}
+\caption{Shapley distribution for the synthetic dataset with 16 input features.}
+\label{fig:synthetic_dim16_values}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_dim_16_removal_curve.png}
+\caption{Removal curve for the 16-dimensional synthetic dataset.}
+\label{fig:synthetic_dim16_removal}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.8\textwidth]{results/synthetic_dim_16_quantile_plot.png}
+\caption{Quantile plot for the 16-dimensional synthetic experiment.}
+\label{fig:synthetic_dim16_quantile}
+\end{figure}
+
+\subsection{Statistical summary}
+Finally, the paired comparison of removal strategies is summarized in Figure~\ref{fig:summary_stats}. The bar plot reports the accuracy obtained when removing low-value points and when removing high-value points for each dataset. The paired t-test gives a statistically significant difference between the two strategies, supporting the claim that the estimated Shapley values are not only descriptive but also meaningful for comparative analysis.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.85\textwidth]{results/summary_stats.png}
+\caption{Paired comparison of low-value versus high-value removal strategies across datasets.}
+\label{fig:summary_stats}
+\end{figure}
+
+\section{Discussion}
+The main advantage of the approach is its interpretability. Instead of treating the dataset as a uniform collection of observations, the method explicitly quantifies the role of each sample. This can be useful for data cleaning, debugging, and the identification of influential points. The main limitation is computational cost: estimating Shapley values requires many repeated evaluations, and this becomes more demanding as the dataset grows. The project mitigates this by using a lightweight k-NN classifier, a moderate number of permutations, and a clean two-stage protocol in which $k$ is selected once on validation and then kept fixed for the Shapley analysis. A further limitation is that the estimates are approximate, since the exact Shapley values are usually intractable for large problems.
+
+\section{Conclusion}
+This project implements a reproducible workflow for estimating Data Shapley values in a classification setting, from the choice of datasets to the generation of visual and statistical summaries. The results show that the method can identify points with different levels of usefulness and that the conclusions remain informative even when the problem is made more challenging through label noise and higher-dimensional inputs. Overall, the project demonstrates that Data Shapley is a valuable tool for understanding the role of individual training data points beyond standard accuracy-based evaluation.
+
+\end{document}
