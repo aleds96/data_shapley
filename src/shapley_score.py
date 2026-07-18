@@ -20,11 +20,10 @@ def _score_subset(
         return 0.0
     
     k_eff = min(n_neighbors, max(1, len(X_subset)))
-    if k_eff < n_neighbors:
-        warnings.warn(
-            f"_score_subset: uso k={n_neighbors} come vicini > dispo.={len(X_subset)}, usando quindi==> k_eff={k_eff}",
-            RuntimeWarning,
-        )
+    
+    #if k_eff < n_neighbors:
+    #f"_score_subset: uso k={n_neighbors} come vicini > dispo.={len(X_subset)}, usando quindi==> k_eff={k_eff}"
+    
     clf = classifier_cls(n_neighbors=k_eff)
     clf.train(X_subset, y_subset)
     preds = clf.apply(X_val)

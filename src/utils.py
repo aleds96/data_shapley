@@ -100,21 +100,53 @@ def inject_label_noise(
         y_noisy[idx] = rng.choice(others)
     return y_noisy, flip_idx
 
-#creazione Dataset sintetico
+#creazione Dataset sintetico. i primi informative_dim feature contengono il segnale (combinazione lineare), mentre le restanti feature sono o rumore puro o ridondanti.
+#"noisy" (aggiunge feature casuali) o "redundant" (duplica informative con rumore)
 def make_synthetic_dataset(
-    n_samples: int = 200, n_features: int = 6,
-    noise_level: float = 0.0, seed: int = 42,
+    n_samples: int = 200,
+    n_features: int = 6,
+    noise_level: float = 0.0,
+    seed: int = 42,
+    informative_dim: int = 3,
+    mode: str = "redundant",  # 
 ) -> Tuple[np.ndarray, np.ndarray]:
-    #Genera dati binari da una funzione lineare del segnale con label noise opzionale.
     rng = np.random.default_rng(seed)
-    X = rng.normal(size=(n_samples, n_features))
-    signal = X[:, 0] + 0.8 * X[:, 1] + 0.4 * X[:, 2]
-    y = (signal > 0).astype(int)
-    if noise_level > 0:
-        flip_mask = rng.random(n_samples) < noise_level
-        y = np.where(flip_mask, 1 - y, y)
-    return X, y
+    if informative_dim > n_features:
+        informative_dim = n_features
 
+    #genera le feature informative
+    X_inf = rng.normal(loc=0.0, scale=1.0, size=(n_samples, informative_dim))
+
+    #costruisci il segnale come combinazione lineare delle informative
+    #con pesi decrescenti
+    weights = np.array([1.0, 0.8, 0.4] + [0.2] * max(0, informative_dim - 3))[:informative_dim]
+    signal = X_inf.dot(weights[:informative_dim])
+
+    #etichette binarie dal segnale (soglia 0)
+    y = (signal > 0).astype(int)
+
+    #aggiungi feature aggiuntive
+    n_extra = n_features - informative_dim
+    if n_extra > 0:
+        if mode == "redundant":
+            #duplicati rumorosi delle informative (mantiene SNR)
+            extras = []
+            for i in range(n_extra):
+                src_col = i % informative_dim
+                #aggiungi piccolo rumore gaussiano
+                extras.append(X_inf[:, src_col] + 0.1 * rng.normal(size=n_samples))
+            X_extra = np.column_stack(extras)
+        else:
+            #mode == "noisy": (degradano SNR)
+            X_extra = rng.normal(size=(n_samples, n_extra))
+        X = np.hstack([X_inf, X_extra])
+    else:
+        X = X_inf
+    if noise_level > 0:
+        flip_mask = rng.random(n_samples) < float(noise_level)
+        y = np.where(flip_mask, 1 - y, y)
+
+    return X, y
 
 def plot_shapley_distribution(values: np.ndarray, title: str, save_path=None) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
