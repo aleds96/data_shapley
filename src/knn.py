@@ -49,11 +49,11 @@ class Classifier:
     
     def _check_fitted(self) -> None:
         if not self._fitted or self.data_x is None or self.data_y is None:
-            raise RuntimeError("Devi chiama train() prima di predicere")
+            raise RuntimeError(" bisogna chiamare train() rima di predicere")
 
     def _check_feature_dim(self, X: np.ndarray) -> None:
         if X.shape[1] != self.data_x.shape[1]:
-            raise ValueError(f"Caratteristiche non corrispondono: atteso {self.data_x.shape[1]}, ricevuto {X.shape[1]}")
+            raise ValueError(f"feature dim non valido: atteso {self.data_x.shape[1]}, ricevuto {X.shape[1]}")
 
     def _vote(self, labels: np.ndarray) -> Union[int, str]:
         return Counter(labels).most_common(1)[0][0]

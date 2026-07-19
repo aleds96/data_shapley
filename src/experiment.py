@@ -99,6 +99,7 @@ def run_single(
     if len(noise_idx) > 0:
         ranks = np.empty_like(np.argsort(shapley))
         ranks[np.argsort(shapley)] = np.arange(len(shapley))
+        #qui mettiamo 20 per la regola 80-20 ma in realtà potremmo decidere in base ai quantili
         thr = int(0.2 * len(shapley))
         detection = {
             "n_noise": int(len(noise_idx)),
